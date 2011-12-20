@@ -1,0 +1,56 @@
+One Grey Goo packet has a maximum size of 32768 bytes.
+
+All packets must start with "GGYY" where "YY" is the current protocol
+version.  The protocol is not efficient insofar as we loose 4 bytes in
+every packet. This is intended to ease network classification and auditing.
+
+Structure:
+
+----
+
+H |   4 BYTEs: "GG01"
+E |   2 BYTES: total size of the packet
+A |   4 BYTES: packet sequence number
+D |   2 BYTES: Payload type
+E | 
+R |
+
+     20 BYTES: HMAC of the whole packet (with the HMAC itself skip-ed)
+     XX BYTES: PAYLOAD
+
+The highest order bit of the payload type is a flag that indicates
+whether the packet is from the client to the server.
+
+This allows us to use the same HMAC key for C->S and S->C. It is ugly
+though and may change in the future in favor of one HMAC key for C->S
+and another one for S->C.
+
+----
+
+A connection state must keep track of two sequence number. C->S and S->C
+sequence numbers are independant. Both start at 1.
+
+The HMAC key is initialized to "This is not a secret". HMAC MUST be
+correct in the first packets as well.
+
+1. C->S: GG_PAYLOAD_DH (DH offer)
+2. S->C: GG_PAYLOAD_DH (DH offer)
+
+A DH offer must be a big endian bignum that has exactly the size of the DH
+modulus. It's noteworthy that OpenSSL tends to strip leading zeros so one
+should add leading zero if using OpenSSL.
+
+At this point, the HMAC key is re-set to become SHA1(compute_DH_shared_secret).
+
+3. C->S: GG_RSA_SIGNATURE_SESSION: RSA signature of the concatenation of
+HMAC of packet 1 and HMAC of packet 2.  4. S->C: GG_PAYLOAD_PRESENT_ID:
+the server presents its identity (a string).
+
+A RSA signature, like a DH offer must be a big endian bignum that has exactly
+the size of the RSA modulus.
+
+We do not authenticate the server. The fact that the server presents and
+identity will allow the client to detect a "blind" redirection by an
+attacker.
+
+See the README file for a better discussion.

@@ -1,0 +1,8 @@
+# Diffie-Hellman parameters and RSA public keys go here.
+#
+# dh_parameters.der is the second Oakley group: http://tools.ietf.org/html/rfc2409#section-6.2
+#
+# rsa_public_test.pem is the test mode RSA key
+# rsa_public_root.pem is the normal mode RSA key
+
+292c025f2115bcd65898fe26ec74c07441ff2a8e  dh_parameters.der

@@ -1,0 +1,221 @@
+Grey Goo
+========
+
+Grey Goo is a small and simple server whose goal is to work when OpenSSH
+doesn't.
+
+- It supports public-key based client authentication and packet
+integrity (but not encryption).
+- It is extremely memory efficient (no explicit memory allocation
+after initialization) and the server can rely on a tiny, custom crypto
+library (the daemon is roughly 50kb in total).
+- It relies on pre-initialized workers (process, not threads!) for
+maximum reliability and availability.
+
+More information
+================
+
+The daemon is a single file. Once it's running, it does not require file
+system access anymore (unless the command the client requests requires
+it of course).
+
+The daemon is made of a main process (a factory) that will pre-fork
+workers. Each worker can accept a new connection and will work even
+if the factory is dead. Once a worker has accepted a new connection,
+the factory will start a new worker to replace it. Even if the worker
+un-expectedly dies for any reason, the factory will be notified and will
+start a new worker.
+
+Once a worker has accepted a connection, it'll authenticate the client,
+send its own identity and accept any command.  There will be no explicit
+memory allocation (outside of the use of a stack) in the critical
+path between accepting a connection and running a command. The server
+can use either OpenSSL or a custom, tiny, memory-efficient crypto
+implementation.
+
+Grey Goo does not support server authentication, but supports a strong
+session with a client, client authentication via a RSA signature and
+will bind the client authentication to the session. Since we have a
+strong session, the server can send its identity, currently a string
+with its hostname so that the client can detect blind redirections by an
+attacker.
+
+This makes Grey Goo a good match for restarting OpenSSH, saving a
+machine from a fork bomb or rebooting it, but not suitable for changing
+the root password or sending/reading other secrets.
+
+Consistently with this, Grey Goo support packet integrity, but not
+packet encryption.
+
+Compilation
+===========
+
+You need the OpenSSL header files (for the client).
+On Debian or Ubuntu: "apt-get install libssl-dev"
+
+Commands
+========
+
+Grey Goo can accept a number of commands. Some of those commands are
+purely internal, without any external dependencies.
+
+Implemented:
+
+- GG_PAYLOAD_CMD_FORK_EXECVE: execve a command. Input and output are redirected
+  to the client in a secure (integrity) channel
+- GG_PAYLOAD_CMD_DIRECT_EXECVE: support executing a command directly
+ (without fork()), à la rexd. Only output is redirected to the client.
+  No integrity. Should be avoided.
+- GG_PAYLOAD_CMD_DMESG: return the last XXX bytes of the kernel ring buffer
+- GG_PAYLOAD_CMD_WRITE_FILE: currently used to implement remote sysrq 
+- GG_PAYLOAD_CMD_REBOOT: reboot
+
+Memory allocation
+=================
+
+Grey Goo has been designed to pre-allocate memory as much as
+possible and to have a tiny memory footprint.
+
+To make the memory footprint even smaller, one can further reduce the size
+of a packet, GG_PKT_MAX_SIZE.
+
+Currently, we still use stack variables for small variables,
+but we declare any stack variable that needs substantial space as
+"static" so that it ends up in the .bss section (and in a load-time
+allocated PT_LOAD segment). It's not ideal, but we found it less ugly
+than having a giant main pre-allocation with everything.
+
+Because of the "pre-allocation" constraint, a lot of structures that
+you would expect to contain pointers will instead directly contain
+storage. This is because we avoid having proper "constructors" that need
+to allocate memory.
+
+A consequence of this is that, we don't use many
+pointers to incomplete types, which is also why we have to make each C
+file depend on every headers (because they need to know how types are
+actually implemented and be recompiled if this changes).
+
+
+Crypto library
+==============
+
+gg-crypto.h has two implementations: a full OpenSSL
+implementation (gg-crypto-openssl.c) and a partial ucryptolib one
+(gg-crypto-ucryptolib.c).
+
+ucryptolib is a tiny implementation written by Marius Schilder that is
+fully embedded in Grey Goo.
+
+The server can use either implementation, but the client must use
+OpenSSL.
+
+Protocol
+========
+
+The protocol is more detailed in the "PROTOCOL" file. In a nutshell:
+
+  - We negociate a key with Diffie-Hellman between the server and the
+client that is then used as a HMAC key to authenticate the packets.
+  - We authenticate the client by requesting that he RSA-signs the first two
+packets.
+  - Then the server will send its identity (a string) to the client.
+
+The rationale is the following: we want to guarantee the integrity of
+the servers. We do not guarantee any confidentiality.
+
+  Step A: the client is strongly authenticated
+
+  A MITM attacker could do two main things:
+  1. Set-up a rogue server and make us connect to it. Since we only care
+    about the integrity of *our* servers, this attack is outside of
+    the scope.  (But remember that Grey Goo should not be used to send any
+    secret).
+
+  2. Blindly redirect a client to another server (and make us, for
+    instance reboot or change the configuration of another server).
+
+  Step B: To prevent this attack, the server will send its hostname as an
+  identifier. The client can then choose to abort the connection.
+
+  With Step A and Step B, we are able to guarantee the integrity of our
+  servers.
+
+Diffie-Hellman: 1024 bits group, 2 as a generator of a subgroup.
+RSA: 2048 bits
+
+Users and keys:
+===============
+
+Grey Goo doesn't support a notion of users. The commands will be run with
+whatever privileges Grey Goo was started with. However, Grey Goo supports two
+different keys:
+
+- a "root" key: the key that is used by default
+- a "test" key: the key that is used when started with a special command line
+  switch.
+
+The former is generated with "make genrsa", the later with "make genrsatest".
+
+It's important to understand that the "root" and "test" key are not
+fundamentally different and give the exact same amount of privileges. The test
+key was created so that one can debug the exact same binary that is used in
+"production" without knowledge of the production key.
+
+Both keys are "baked" in the client (ggc). They are encrypted with a key
+derived from the supplied password via PBKDF2 (GG_HASH_ITERS iterations).
+
+You may want to change the PBKDF2 salt in gg-password.c:password_to_key()
+depending on your threat model and usage.
+
+Misc features:
+==============
+
+- The main Grey Goo process (factory) tries to bullet-proof itself by
+  raising its priority, becoming immune to the OOM killer and committing
+  all virtual memory (mlockall()).
+- Non blocking, best effort logging to a running syslogd.
+- Lack of encryption allows further logging and auditing directly on the
+  wire.
+
+Killing Grey Goo:
+=================
+
+- No single process kill will completely kill Grey Goo
+- To kill everything you can kill the process group
+  (e.g. with kill -9 -group).
+
+DoS:
+====
+
+Because of the way Grey Goo works, and as a trade-off, there is a big
+dissymmetry between the CPU and memory cost of a new connection between
+the server and a malicious client.
+
+With a simple TCP connection, an attacker can make Grey Goo fork and
+initialize a new worker.
+
+To mitigate this, packet filtering could be done at a certain
+perimeter, at the host level or alternatively in Grey Goo itself
+(ggd.c:is_acceptable_address()).
+
+As a first-level mitigation, there is some basic throttling and Grey Goo
+will never create more than 10 workers / s.
+
+TODO:
+=====
+
+Medium:
+- Rewrite gg_packet_get properly
+- Support for pseudo terminals
+- Different HMAC keys for C->S and S->C
+- Support baking an arbitrary number of keys in the client to ease key
+  rotation
+- Support sending multiples commands in one go (e.g. -s "t" -k)
+
+Small:
+- Support timeouts, especially for pre-auth stuff
+- Change crypto initialization to other names
+- Pre-allocate some stack space
+- Support multiple target hosts in the client command line
+- Automatically abort / warn in the client if the identity string sent by the
+  server doesn't match something expected.
