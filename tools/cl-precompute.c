@@ -102,17 +102,18 @@ static void precomputeModulus(const BIGNUM * n, clBignumModulus * mod) {
 
 int precompute_rsa(char *rsa_file_precomp, char *rsa_file_pem,
                    char *variable_name) {
-  FILE *rsa_precomp_c;
-  BIO *bio;
-  RSA *rsa_pub;
+  int ret = 0;
+  FILE *rsa_precomp_c = NULL;
+  BIO *bio = NULL;
+  RSA *rsa_pub = NULL;
   clBignumModulus rsa_precompute;
-
 
   bio = BIO_new_file(rsa_file_pem, "r");
 
   if (!bio) {
     printf("Could not open %s properly\n", rsa_file_pem);
-    return -1;
+    ret = -1;
+    goto out;
   }
 
   rsa_pub = PEM_read_bio_RSAPublicKey(bio, NULL, NULL, NULL);
@@ -121,12 +122,14 @@ int precompute_rsa(char *rsa_file_precomp, char *rsa_file_pem,
     printf("Error while reading RSA public key from %s\n", rsa_file_pem);
     ERR_load_crypto_strings();
     ERR_print_errors_fp(stderr);
-    return -1;
+    ret = -1;
+    goto out;
   }
 
   if (!(rsa_precomp_c = fopen(rsa_file_precomp, "w+"))) {
     printf("Error opening %s\n", rsa_file_precomp);
-    return -1;
+    ret = -1;
+    goto out;
   }
 
   precomputeModulus(rsa_pub->n, &rsa_precompute);
@@ -136,16 +139,24 @@ int precompute_rsa(char *rsa_file_precomp, char *rsa_file_pem,
 
   cprint(rsa_precomp_c, &rsa_precompute);
   fprintf(rsa_precomp_c, ";\n");
-  fclose(rsa_precomp_c);
 
-  return 0;
+out:
+  if (rsa_precomp_c && fclose(rsa_precomp_c))
+    ret = -1;
+  if (bio)
+    BIO_free(bio);
+  if (rsa_pub)
+    RSA_free(rsa_pub);
+
+  return ret;
 }
 
 int precompute_dh(char *dh_file_precomp, char *dh_file_der,
                   char *variable_name) {
-  FILE *dh_precomp_c;
-  FILE *dh_der;
-  DH *dh;
+  int ret = 0;
+  FILE *dh_precomp_c = NULL;
+  FILE *dh_der = NULL;
+  DH *dh = NULL;
   clBignumModulus dh_precompute;
   size_t dh_params_len;
   unsigned char dh_params_buffer[2048];
@@ -153,7 +164,8 @@ int precompute_dh(char *dh_file_precomp, char *dh_file_der,
 
   if (!(dh_der = fopen(dh_file_der, "r"))) {
     printf("Error opening %s\n", dh_file_der);
-    return -1;
+    ret = -1;
+    goto out;
   }
 
   /* Try to read up to sizeof(dh_params) bytes */
@@ -161,7 +173,8 @@ int precompute_dh(char *dh_file_precomp, char *dh_file_der,
 
   if (!feof(dh_der)) {
     printf("Error reading %s or file too big\n", dh_file_der);
-    return -1;
+    ret = -1;
+    goto out;
   }
 
   dh = d2i_DHparams(NULL, &dh_params, dh_params_len);
@@ -169,17 +182,20 @@ int precompute_dh(char *dh_file_precomp, char *dh_file_der,
     printf("Error while reading DH parameters from %s\n", dh_file_der);
     ERR_load_crypto_strings();
     ERR_print_errors_fp(stderr);
-    return -1;
+    ret = -1;
+    goto out;
   }
 
   if (!BN_is_word(dh->g, 2)) {
     printf("Error precomputing DH key, generator needs to be 2\n");
-    return -1;
+    ret = -1;
+    goto out;
   }
 
   if (!(dh_precomp_c = fopen(dh_file_precomp, "w+"))) {
     printf("Error opening %s\n", dh_file_precomp);
-    return -1;
+    ret = -1;
+    goto out;
   }
 
   precomputeModulus(dh->p, &dh_precompute);
@@ -190,10 +206,15 @@ int precompute_dh(char *dh_file_precomp, char *dh_file_der,
 
   cprint(dh_precomp_c, &dh_precompute);
   fprintf(dh_precomp_c, ";\n");
-  fclose(dh_precomp_c);
 
-  return 0;
-
+out:
+  if (dh_precomp_c && fclose(dh_precomp_c))
+    ret = -1;
+  if (dh_der && fclose(dh_der))
+    ret = -1;
+  if (dh)
+    DH_free(dh);
+  return ret;
 }
 
 int main(int argc, char *argv[]) {

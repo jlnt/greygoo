@@ -31,29 +31,33 @@
 #define SEED_NUMBYTES 32
 static int generate_rsa(char *private_file, char *public_file,
                         pem_password_cb *cb) {
-  RSA *rsa;
-  FILE *priv;
-  FILE *pub;
+  RSA *rsa = NULL;
+  FILE *priv = NULL;
+  FILE *pub = NULL;
   const EVP_CIPHER *enc;
   int ret, num_read = 0;
-  int dev_random;
+  int return_value = 0;
+  int dev_random = -1;
   char seed[SEED_NUMBYTES];
 
   /* First make sure we seed OpenSSL properly */
   dev_random = open("/dev/random", O_RDONLY);
-  if (dev_random < 0) return -1;
+  if (dev_random < 0) {
+    return_value = -1;
+    goto out;
+  }
 
   printf("Getting random data, this may take a while\n");
   while (num_read < SEED_NUMBYTES) {
     ret = read(dev_random, seed + num_read, sizeof(seed) - num_read);
     /* /dev/random should never return EOF so we consider it an error */
-    if (ret <= 0)
-      return -1;
-    else
+    if (ret <= 0) {
+      return_value = -1;
+      goto out;
+    } else {
       num_read += ret;
+    }
   }
-
-  close(dev_random);
 
   /* Seed OpenSSL */
   RAND_add(seed, sizeof(seed), sizeof(seed));
@@ -64,26 +68,30 @@ static int generate_rsa(char *private_file, char *public_file,
 
   if (!enc) {
     fprintf(stderr, "AES not available\n");
-    return -1;
+    return_value = -1;
+    goto out;
   }
 
   priv = fopen(private_file, "w");
   if (!priv) {
     fprintf(stderr, "Could not open %s for writing\n", private_file);
-    return -1;
+    return_value = -1;
+    goto out;
   }
 
   pub = fopen(public_file, "w");
   if (!pub) {
     fprintf(stderr, "Could not open %s for writing\n", public_file);
-    return -1;
+    return_value = -1;
+    goto out;
   }
 
   rsa = RSA_generate_key(2048, 65537, NULL, NULL);
 
   if (!rsa) {
     fprintf(stderr, "Could not generate RSA key\n");
-    return -1;
+    return_value = -1;
+    goto out;
   }
 
   /* This in unfortunately not a standard PKCS#8 EncryptedPrivateKeyInfo
@@ -102,20 +110,30 @@ static int generate_rsa(char *private_file, char *public_file,
 
   if (!ret) {
     fprintf(stderr, "Error writing private key\n");
-    return -1;
+    return_value = -1;
+    goto out;
   }
 
   ret = PEM_write_RSAPublicKey(pub, rsa);
 
   if (!ret) {
     fprintf(stderr, "Error writing public key\n");
-    return -1;
+    return_value = -1;
+    goto out;
   }
 
-  if (fclose(pub) || fclose(priv))
-    return -1;
+out:
 
-  return 0;
+  if (dev_random != -1 && close(dev_random))
+    return_value = -1;
+  if (pub && fclose(pub))
+    return_value = -1;
+  if (priv && fclose(priv))
+    return_value = -1;
+  if(rsa)
+    RSA_free(rsa);
+
+  return return_value;
 }
 
 void usage(const char* a0) {
