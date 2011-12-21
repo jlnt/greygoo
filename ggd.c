@@ -649,24 +649,27 @@ static void usage(char *name) {
 
 /* return 0 on success, -1 on failure */
 static int daemonize(void) {
-
-  pid_t ret;
+  int ret = 0;
+  pid_t pid;
   int nullfd;
 
   nullfd = open("/dev/null", O_RDWR);
 
   if (nullfd == -1) {
     REPORT_ERRNO("Could not open null");
-    return -1;
+    ret = -1;
+    goto out;
   }
 
-  ret = fork();
+  pid = fork();
 
-  if (ret < 0)
-    return -1;
+  if (pid < 0) {
+    ret = -1;
+    goto out;
+  }
 
   /* exit the parent */
-  if (ret > 0)
+  if (pid > 0)
     _exit(EXIT_SUCCESS);
 
   /* we are the child */
@@ -674,7 +677,8 @@ static int daemonize(void) {
   /* become a session leader and a process group leader */
   if (setsid() == (pid_t) -1) {
     REPORT_ERRNO("Could not create a new session");
-    return -1;
+    ret = -1;
+    goto out;
   }
 
   REPORT_INFO("Going into background, process group: %d\n\n", getpgrp());
@@ -685,14 +689,20 @@ static int daemonize(void) {
   /* Point standard I/O descriptors to /dev/null */
   if (dup2(nullfd, 0) == -1 || dup2(nullfd, 1) == -1 || dup2(nullfd, 2) == -1) {
     REPORT_ERRNO("Could not redirectd standard I/O");
-    return -1;
+    ret = -1;
+    goto out;
   }
 
-  /* Abort if close or chdir fail */
-  if ((nullfd > 2 && close(nullfd)) || chdir("/"))
-    return -1;
+  if (chdir("/"))
+    ret = -1;
 
-  return 0;
+out:
+  /* always close nullfd if we failed.
+   * On success close if it's not stdin/stdout/stderr */
+  if (nullfd != -1 && (ret == -1 || nullfd > 2))
+    if (close(nullfd))
+      ret = -1;
+  return ret;
 }
 
 /* Get our server id. For now we just try to get the hostname */
