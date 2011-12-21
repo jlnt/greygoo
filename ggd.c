@@ -487,9 +487,9 @@ static void do_gg_factory(int tcp_sock, int gg_workers,
 
   REPORT_ERRNO("ppoll failed");
 out:
-  if (!pipes)
+  if (pipes)
     free(pipes);
-  if (!pfds)
+  if (pfds)
     free(pfds);
   return;
 }
