@@ -62,8 +62,6 @@ static int generate_rsa(char *private_file, char *public_file,
 
   enc = EVP_aes_128_cbc();
 
-  /* FIXME: properly and manually seed OpenSSL from /dev/random */
-
   if (!enc) {
     fprintf(stderr, "AES not available\n");
     return -1;
@@ -137,7 +135,13 @@ int main(int argc, char *argv[]) {
   }
 
   /* No swap, no core dumps */
-  if (protect_address_space()) return -1;
+  if (protect_address_space()) {
+    fprintf(stderr, "Could not protect the address space adequately. The keys "
+            "could leak to swap. Check 'ulimit -l'. Continue? [Y/N]\n");
+    *buf = 0;
+    if ((read(STDIN_FILENO, buf, 1) != 1) || *buf != 'Y')
+      return -1;
+  }
 
   fprintf(stderr, "Warning: never run this from a virtual machine as the key "
           "may leak to persistent storage\n\n");

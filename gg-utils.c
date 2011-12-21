@@ -353,21 +353,19 @@ int become_bullet_proof(int prio) {
 }
 
 int protect_address_space(void) {
+  int ret = 0;
   const struct rlimit rl = {RLIM_INFINITY, RLIM_INFINITY};
 
   /* Get unlimited locked memory space if we can */
-  if (setrlimit(RLIMIT_MEMLOCK, &rl)) {
-    fprintf(stderr, "Could not request unlimited locked memory. "
-           "You may want to run this as root to avoid potential memory "
-           "allocation failures\n");
-  }
+  if (setrlimit(RLIMIT_MEMLOCK, &rl)) ret = -1;
 
   /* no core dumps */
-  if (prctl(PR_SET_DUMPABLE, 0, -1, -1, -1)) return -1;
-  /* No swap */
-  if (mlockall(MCL_CURRENT | MCL_FUTURE)) return -1;
+  if (prctl(PR_SET_DUMPABLE, 0, -1, -1, -1)) ret = -1;
 
-  return 0;
+  /* No swap */
+  if (mlockall(MCL_CURRENT | MCL_FUTURE)) ret = -1;
+
+  return ret;
 }
 
 /* FIXME: fixup for OLD libc that don't support ppoll */

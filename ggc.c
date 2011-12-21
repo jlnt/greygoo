@@ -65,11 +65,12 @@ int main(int argc, char *argv[]) {
 
   GG_cnx cnx;
 
+  fprintf(stderr, "Grey Goo client\n\n");
+
   /* Get a protected address space: no core dump, no swapping */
   if (protect_address_space())
-    return -1;
-
-  fprintf(stderr, "Grey Goo client\n\n");
+    fprintf(stderr, "Could not protect the address space adequately. "
+                    "Check 'ulimit -l'. You should abort.\n");
 
   parse_command_line(&cmd, argc, argv);
 
