@@ -58,15 +58,15 @@ void report(const char *fmt, int type, ...) {
     ret = vfprintf(stderr, fmt, print_args);
   }
 
-  /* Disable stderr if vfprintf fails */
-  if (ret < 0) {
-    stderr_disabled = 1;
-  }
   if (!syslog_disabled)
     gg_vsyslog(LOG_DAEMON | LOG_ERR, fmt, log_args);
 
   if (!stderr_disabled)
     va_end(print_args);
+
+  /* Disable stderr if vfprintf failed */
+  if (ret < 0)
+    stderr_disabled = 1;
 
   va_end(log_args);
 }
