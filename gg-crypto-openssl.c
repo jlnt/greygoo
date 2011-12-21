@@ -17,11 +17,13 @@
  * OpenSSL implementation of Grey Goo crypto interface
  */
 
-#include <openssl/sha.h>
-#include <openssl/pem.h>
 #include <unistd.h>
 #include <string.h>
+#include <openssl/dh.h>
+#include <openssl/hmac.h>
+#include <openssl/pem.h>
 #include <openssl/rand.h>
+#include <openssl/sha.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>

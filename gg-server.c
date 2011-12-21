@@ -17,6 +17,7 @@
 
 #include <fcntl.h>
 #include <signal.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <sys/klog.h>
 #include <sys/reboot.h>

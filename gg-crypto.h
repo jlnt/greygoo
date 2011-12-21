@@ -19,9 +19,6 @@
 #ifndef GG_CRYPTO_H
 #define GG_CRYPTO_H
 #include "gg-utils.h"
-#include <openssl/dh.h>
-#include <openssl/hmac.h>
-#include <openssl/sha.h>
 
 #define DH_KEY_MAX_LEN (1024/8)
 
