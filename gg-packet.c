@@ -53,7 +53,7 @@ void gg_cnx_init(GG_cnx *cnx, int socket, char *our_id, char *remote_id,
 void gg_cnx_set_strongid(GG_cnx *cnx, char *remote_id, size_t len) {
   GG_ptr ptr;
 
-  if (!cnx || !remote_id || len > GG_SERVER_ID_MAX_LEN) {
+  if (!remote_id || len > GG_SERVER_ID_MAX_LEN) {
     cnx->remote_strong_id = NULL;
     return;
   }
