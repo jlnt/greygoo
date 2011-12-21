@@ -66,7 +66,7 @@ enum keyindex { KEYIDX_ROOT, KEYIDX_TEST };
  * rsakey = NULL and len = KEYIDX_TEST means: use internally baked test key
  */
 int crypto_verify_setkey(GG_crypt *ggc, void *rsakey, size_t len);
-/* classic MAC interface to signature verfication */
+/* classic MAC interface to signature verification */
 int crypto_verify_init(GG_crypt *ggc);
 int crypto_verify_update(GG_crypt *ggc, const GG_ptr *ggpp, size_t len);
 int crypto_verify_final(GG_crypt *ggc, GG_ptr *sigret, size_t siglen);

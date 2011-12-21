@@ -111,7 +111,7 @@ int precompute_rsa(char *rsa_file_precomp, char *rsa_file_pem,
   bio = BIO_new_file(rsa_file_pem, "r");
 
   if (!bio) {
-    printf("Couuld not open %s properly\n", rsa_file_pem);
+    printf("Could not open %s properly\n", rsa_file_pem);
     return -1;
   }
 
