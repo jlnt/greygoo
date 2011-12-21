@@ -53,7 +53,7 @@ void *xmalloc(size_t size) {
 }
 
 void xfree(void *ptr) {
-  if (free == NULL)
+  if (ptr == NULL)
     FATAL("xfree: ptr == NULL)");
 
   free(ptr);
