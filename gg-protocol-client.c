@@ -51,7 +51,7 @@ int do_start_session_client(GG_cnx *cnx, GG_packet *pkt) {
   }
 
   /* Compute the shared key for the session */
-  if (do_handshake_crypto(cnx, pkt))
+  if (do_handshake_crypto(cnx))
     return -1;
 
   sig_size = pkt->max_payload_size;

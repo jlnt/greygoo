@@ -61,7 +61,7 @@ int send_our_dh_key(GG_cnx *cnx, GG_packet *pkt);
 /* Compute the shared session key g^xy and set it as the internal HMAC key
  * used for the connection
  */
-int do_handshake_crypto(GG_cnx *cnx, GG_packet *pkt);
+int do_handshake_crypto(GG_cnx *cnx);
 
 
 #endif                          /* GG_PROTOCOL_H */

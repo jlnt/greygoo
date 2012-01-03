@@ -29,7 +29,8 @@
  * -1: error
  */
 int do_start_session_server(GG_cnx *cnx, GG_packet *pkt) {
-  ssize_t ret, payload_len;
+  ssize_t ret;
+  size_t payload_len;
 
   /* we use a well-known, shared HMAC key at first */
   crypto_set_hmac_key(cnx->ggc, "This is not a secret", 20);
@@ -58,7 +59,7 @@ int do_start_session_server(GG_cnx *cnx, GG_packet *pkt) {
   }
 
   /* Compute the shared key for the session */
-  if (do_handshake_crypto(cnx, pkt)) {
+  if (do_handshake_crypto(cnx)) {
     DEBUG(2, "Could not compute shared key\n");
     return -2;
   }

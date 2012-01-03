@@ -43,7 +43,8 @@ static ssize_t read_passkey(unsigned char *key, size_t max_keylen);
  *
  * Return number of bytes on success, 0 on error
  */
-int gg_pass_cb(char *buf, int size, int rwflag, void *u) {
+int gg_pass_cb(char *buf, int size, int rwflag __attribute__((unused)),
+               void *u __attribute__((unused))) {
   int ret;
 
   ret = read_passkey((unsigned char*)buf, size);
@@ -163,7 +164,7 @@ out:
 static int a_to_b16(const unsigned char *in, uint32_t inlen,
                     unsigned char *out, uint32_t outlen) {
   static const char b16[]="0123456789ABCDEF";
-  int i;
+  unsigned int i;
 
   if (inlen > UINT16_MAX || outlen < inlen*2 + 1)
     return -1;
@@ -191,7 +192,7 @@ int password_testall(void) {
      "A0FECE50949C2B79CC3158A5A616EB2A11B42D92"},
     {"GreyGoo", "C935B7591066C8DA29EB9A1A81E6B724647FEEF4"},
   };
-  int i;
+  unsigned int i;
 
   for (i = 0; i < sizeof(test_vect)/sizeof(test_vect[0]); ++i) {
     if (password_to_key(test_vect[i][0], strlen(test_vect[i][0]),

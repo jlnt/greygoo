@@ -16,6 +16,7 @@
  */
 
 #include <fcntl.h>
+#include <limits.h>
 #include <signal.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -196,7 +197,7 @@ static int cmd_dmesg(GG_cnx *cnx, GG_packet *cmd_pkt) {
   len = klogctl(3, cmd_pkt->payload.ptr, cmd_pkt->max_payload_size);
 
   /* Did the kernel return an error ? */
-  if (len < 0 || len > cmd_pkt->max_payload_size) {
+  if (len < 0 || (unsigned int) len > cmd_pkt->max_payload_size) {
     /* return -1 as a 32 bits uint in network order */
     ggp_put_uint32(&cmd_pkt->payload, -1);
     if (gg_packet_set_payload(cmd_pkt, GG_PAYLOAD_INT, sizeof(uint32_t)) ||
@@ -221,11 +222,13 @@ static int cmd_dmesg(GG_cnx *cnx, GG_packet *cmd_pkt) {
 static int do_open_write(const char *file, const GG_ptr *data, size_t size) {
   int fd;
   int ret = 0;
+  if (size > SSIZE_MAX)
+    return -1;
 
   fd = open(file, O_WRONLY, O_APPEND);
   if (fd < 0) return -1;
 
-  if (ggp_full_write(fd, data, size) != size)
+  if (ggp_full_write(fd, data, size) != (ssize_t) size)
     ret = -1;
 
   if (close(fd))
@@ -366,7 +369,7 @@ int reap_child;
  * Functions that check for reap_child should be called with SIGCHLD blocked
  * and should reset it to 0 after the check;
  */
-static void sigchld_handler(int signal) {
+static void sigchld_handler(int signal __attribute__((unused))) {
   reap_child = 1;
 }
 

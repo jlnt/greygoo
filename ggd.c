@@ -53,7 +53,7 @@
 #define ENABLE_TESTKEY_MAGIC "enable_test_key"
 
 GG_crypt *bind_keys_and_init_crypto(int use_test_key);
-static void do_gg_factory(int tcp_sock, int gg_workers,
+static void do_gg_factory(int tcp_sock, unsigned int gg_workers,
                           GG_crypt *ggc, char *server_id);
 
 __attribute__ ((noreturn))
@@ -68,7 +68,7 @@ static int create_pid_file(char *path);
 int main(int argc, char *argv[]) {
   int tcp_sock;
   int ch;
-  int port = GG_PORT;
+  in_port_t port = GG_PORT;
   int priority = -1;
   /* command line arguments: force background or foreground? */
   int arg_force_bg = 0;
@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
       arg_force_fg = 1;
       break;
     case 'p':
-      port = atoi(optarg);
+      port = (in_port_t) atoi(optarg);
       break;
     case 'd':
       debug_setlevel(atoi(optarg));
@@ -298,11 +298,12 @@ void sleep_or_die(void) {
  * (1) is a robust way of knowing if the worker accept()-ed a new connection or
  * died unexpectedly for any reason.
  */
-static void do_gg_factory(int tcp_sock, int gg_workers,
+static void do_gg_factory(int tcp_sock, unsigned int gg_workers,
                           GG_crypt *ggc, char *server_id) {
   int (*pipes)[2] = NULL; /* used as: int pipes[gg_workers][2]; */
   struct pollfd *pfds = NULL; /* used as: struct pollfd pfds[gg_workers] */
-  int i, j, ret, pret;
+  unsigned int i, j;
+  int ret, pret;
   const int ignored_fd = -1; /* Fake fd that will be ignored by poll */
   pid_t pid;
   sigset_t ppoll_mask;

@@ -63,10 +63,10 @@ static const uint8_t* _HASH_final(clHASH_CTX* ctx) {
 // Generic HMAC code section ===========================================
 
 static void _HMAC_init(clHMAC_CTX* ctx, const void* key, int len) {
-  int i;
+  unsigned int i;
   memset(&ctx->opad[0], 0, sizeof(ctx->opad));
 
-  if (len > sizeof(ctx->opad)) {
+  if ((unsigned int) len > sizeof(ctx->opad)) {
     clHASH_init(&ctx->hash);
     clHASH_update(&ctx->hash, key, len);
     memcpy(&ctx->opad[0], clHASH_final(&ctx->hash), clHASH_size(&ctx->hash));

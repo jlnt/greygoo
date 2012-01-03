@@ -236,7 +236,7 @@ int crypto_stage2_init(GG_crypt *ggc) {
    */
   pubkey = ggc->dh->pub_key;
 
-  if (BN_num_bytes(pubkey) > sizeof(ggc->pubkey_bin)) {
+  if ((unsigned int) BN_num_bytes(pubkey) > sizeof(ggc->pubkey_bin)) {
     REPORT_ERROR("crypto_worker_init: Pubkey buffer too small\n");
     return 0;
   }
@@ -244,7 +244,7 @@ int crypto_stage2_init(GG_crypt *ggc) {
   ossl_len = BN_bn2bin(pubkey, ggc->pubkey_bin);
 
   /* OpenSSL doesn't provide a good way to check for errors */
-  if (ossl_len <= 0 || DH_size(ggc->dh) > sizeof(ggc->pubkey_bin) ||
+  if (ossl_len <= 0 || (unsigned int) DH_size(ggc->dh) > sizeof(ggc->pubkey_bin) ||
       ossl_len > DH_size(ggc->dh)) {
     REPORT_ERROR("crypto_worker_init: BN_bn2bin error");
     return 0;
@@ -295,7 +295,7 @@ int crypto_set_shared_key_to_hmac(GG_crypt *ggc) {
 int crypto_set_remote_key(GG_crypt *ggc, const unsigned char *remote_pubkey,
                           size_t len) {
 
-  if (len != DH_size(ggc->dh)) {
+  if (len != (unsigned int) DH_size(ggc->dh)) {
     DEBUG(1, "Remote DH key has the wrong size: %zi\n", len);
     return -1;
   }
@@ -377,7 +377,7 @@ int crypto_verify_final(GG_crypt *ggc, GG_ptr *sigret, size_t siglen) {
 
   /* Our protocol states that the RSA signature should be zero padded to modulus
      size */
-  if (siglen != RSA_size(ggc->rsa_pub))
+  if (siglen != (unsigned int) RSA_size(ggc->rsa_pub))
     return -1;
 
   ret = RSA_verify(NID_sha1, ggc->shasigdigest, SHA_DIGEST_LENGTH, sigret->ptr,
@@ -448,7 +448,7 @@ int crypto_sign_final(GG_crypt *ggc, GG_ptr *sigret, size_t *siglen) {
   int ret;
   const int target_size = EVP_PKEY_size(ggc->rsa_priv);
 
-  if (!siglen || *siglen < target_size || target_size < 0) {
+  if (!siglen || *siglen < (unsigned int) target_size || target_size < 0) {
     DEBUG(2, "sig buffer length is too small\n");
     return -1;
   }

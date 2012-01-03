@@ -171,7 +171,7 @@ int gg_can_read(GG_cnx *cnx, int timeout);
 
 struct GG_packet_impl {
   GG_ptr full_packet;
-  ssize_t transmitted;          /* how much of the packet did we already read
+  size_t transmitted;           /* how much of the packet did we already read
                                    or write from / to the write ? */
   int is_full_and_verified;     /* partially transmitted (read or write) */
   size_t buffer_size;           /* full size of the buffer pointed to by

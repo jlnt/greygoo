@@ -32,6 +32,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -102,7 +103,7 @@ static void sendlog(int logfd, char *message, size_t len) {
   }
 
   /* If we got truncated, we don't do anything about it */
-  if (sent != len)
+  if ((size_t) sent != len)
     DEBUG(1, "Message of length %zi was truncated to %zi\n", len, sent);
 }
 
@@ -119,7 +120,7 @@ void gg_vsyslog(int priority, const char *format, va_list ap) {
 
   /* See the top of file for an explanation of this simplified format */
   len1 = snprintf(buffer, sizeof(buffer), "<%u>%s: ", priority, proc_name);
-  if (len1 < 0 || len1 >= sizeof(buffer))
+  if (len1 < 0 || (size_t) len1 >= sizeof(buffer))
     return;
 
   len2 = vsnprintf(buffer + len1, sizeof(buffer) - len1, format, ap);
@@ -130,7 +131,7 @@ void gg_vsyslog(int priority, const char *format, va_list ap) {
 
   totalsize = len1 + len2;
   /* The previous addition might overflow */
-  if (totalsize < 0 || totalsize > sizeof(buffer))
+  if (totalsize < 0 || (unsigned int) totalsize > sizeof(buffer))
     totalsize = sizeof(buffer);
 
   sendlog( logfd, buffer, totalsize);

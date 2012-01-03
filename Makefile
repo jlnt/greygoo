@@ -9,7 +9,7 @@
 # Set below to disable private key encryption
 #OSSL_NOCRYPT=-n
 
-CFLAGS=-I. -Wall -Werror -O2
+CFLAGS=-I. -Wall -Wextra -Wno-type-limits -Werror -O2
 
 CC=gcc
 

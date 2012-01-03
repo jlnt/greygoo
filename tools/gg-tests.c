@@ -85,7 +85,8 @@ int expect_fatal(void (*test)()) {
   }
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc __attribute__((unused)),
+         char *argv[] __attribute__((unused))) {
   struct gg_test *test = test_list;
   int is_failure = 0;
   printf("Starting Grey Goo unit tests:\n");

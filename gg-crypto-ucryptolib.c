@@ -47,7 +47,7 @@ struct GG_crypt_impl {
   int dh_shared_secret_size;
   /* the remote public diffie-hellman key */
   uint8_t *remote_key;
-  int remote_key_len;
+  size_t remote_key_len;
   /* for RSA signature / verification */
   clBignumModulus myRSA;
   clHASH_CTX rsaHash;
@@ -129,7 +129,7 @@ int crypto_hmac_update(GG_crypt *ggc, const GG_ptr* ggpp, size_t len) {
 /* returns 0 on success */
 int crypto_hmac_final(GG_crypt *ggc, const GG_ptr *md, unsigned int len) {
   const unsigned char *digest;
-  if (len < clHMAC_size(&ggc->hmac_ctx))
+  if (len < (unsigned int) clHMAC_size(&ggc->hmac_ctx))
     return -1;
 
   digest = clHMAC_final(&ggc->hmac_ctx);
@@ -278,7 +278,7 @@ int crypto_verify_final(GG_crypt *ggc, GG_ptr *sigret, size_t siglen) {
 
   assert_ggp_size(sigret, siglen);
 
-  if (siglen != ggc->myRSA.size)
+  if (siglen != (unsigned int) ggc->myRSA.size)
     return -1;
 
   ret = clRSA2K_verify(&ggc->myRSA, sigret->ptr, siglen, &ggc->rsaHash);

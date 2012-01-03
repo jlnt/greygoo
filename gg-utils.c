@@ -148,10 +148,13 @@ ssize_t ggp_write(int socket, const GG_ptr *ggp, size_t size) {
 
 ssize_t ggp_full_read(int socket, const GG_ptr *ggp, size_t size) {
 
-  ssize_t nread = 0;
+  size_t nread = 0;
   ssize_t ret = 0;
   GG_ptr buf;
   buf = *ggp;
+
+  if (size > SSIZE_MAX)
+    return -1;
 
   while (nread < size) {
     ret = ggp_read(socket, &buf, size - nread);
@@ -166,10 +169,13 @@ ssize_t ggp_full_read(int socket, const GG_ptr *ggp, size_t size) {
 
 ssize_t ggp_full_write(int socket, const GG_ptr *ggp, size_t size) {
 
-  ssize_t nread = 0;
+  size_t nread = 0;
   ssize_t ret = 0;
   GG_ptr buf;
   buf = *ggp;
+
+  if (size > SSIZE_MAX)
+    return -1;
 
   while (nread < size) {
     ret = ggp_write(socket, &buf, size - nread);
@@ -184,7 +190,8 @@ ssize_t ggp_full_write(int socket, const GG_ptr *ggp, size_t size) {
 
 /* fixed timing comparison return 0 if equal, something else otherwise */
 int ggp_equal(const GG_ptr *s1, const GG_ptr *s2, size_t n) {
-  int i, ret;
+  unsigned int i;
+  int ret;
   char *v1;
   char *v2;
   assert_ggp_size(s1, n);

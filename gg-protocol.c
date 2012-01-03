@@ -108,7 +108,7 @@ int send_our_dh_key(GG_cnx *cnx, GG_packet *pkt) {
  *  -1: error
  *   0: success
  */
-int do_handshake_crypto(GG_cnx *cnx, GG_packet *pkt) {
+int do_handshake_crypto(GG_cnx *cnx) {
 
   if (
        /* Update our signature context with the hmac of the second packet */
