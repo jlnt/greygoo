@@ -20,7 +20,8 @@
 #include "report.h"
 
 int do_start_session_client(GG_cnx *cnx, GG_packet *pkt) {
-  size_t sig_size, id_size;
+  size_t sig_size;
+  ssize_t id_size;
   GG_ptr payload = ggp_clone(&pkt->payload);
   int ret;
 

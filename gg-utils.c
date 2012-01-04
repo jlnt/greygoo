@@ -281,7 +281,8 @@ ssize_t parse_string(GG_ptr *ggpp, size_t maxlen) {
 ssize_t encode_string(GG_ptr *ggpp, char *string, size_t maxlen) {
   size_t len;
   /* we need to account for the NUL byte */
-  if (maxlen <= 1 || (len = strlen(string)) > maxlen - 1)
+  if (maxlen <= 1 || (len = strlen(string)) > maxlen - 1 ||
+      len > SSIZE_MAX - 1)
     return -1;
   assert_ggp_size(ggpp, maxlen);
 

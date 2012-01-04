@@ -19,6 +19,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <limits.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <string.h>
@@ -268,7 +269,7 @@ static ssize_t serialize_command(GG_ptr *payload, size_t maxlen, int argc,
   /* get our own copy of the payload pointer */
   GG_ptr buf = ggp_clone(payload);
   size_t len = 0;
-  size_t ret;
+  ssize_t ret;
   int i;
 
   if (argc > GG_CMD_MAX_ARGC || argc < 1) {
@@ -276,7 +277,7 @@ static ssize_t serialize_command(GG_ptr *payload, size_t maxlen, int argc,
     return -1;
   }
 
-  if (maxlen < sizeof(uint32_t))
+  if (maxlen < sizeof(uint32_t) || maxlen > SSIZE_MAX)
     return -1;
 
   encode_uint32(&buf, argc);
@@ -297,7 +298,7 @@ static ssize_t serialize_command(GG_ptr *payload, size_t maxlen, int argc,
 
   DEBUG(2, "serialized command %s, total length: %zi\n", argv[0], len);
 
-  return len;
+  return (ssize_t) len;
 }
 
 static int connect_and_init_session(GG_cnx *cnx, GG_crypt *ggc,

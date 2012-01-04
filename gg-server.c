@@ -72,7 +72,7 @@ int do_handle_connection(GG_cnx *cnx) {
 static int parse_execve_payload(GG_ptr *payload, size_t totallen,
                                  char *argv[], int maxargc) {
   size_t parsed = 0;
-  size_t ret;
+  ssize_t ret;
   int argc;
   int i;
   GG_ptr commands;
