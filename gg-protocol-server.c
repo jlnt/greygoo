@@ -50,18 +50,18 @@ int do_start_session_server(GG_cnx *cnx, GG_packet *pkt) {
 
   /* send the second packet: our DH public key */
   if ((ret = send_our_dh_key(cnx, pkt)))
-    return ret;
+    return -1;
 
   /* RSA signature verification (2): include second packet's HMAC */
   if (crypto_verify_update(cnx->ggc, &pkt->hmac, GG_PKT_HMAC_LEN)) {
     DEBUG(2, "crypto error\n");
-    return -2;
+    return -1;
   }
 
   /* Compute the shared key for the session */
   if (do_handshake_crypto(cnx)) {
     DEBUG(2, "Could not compute shared key\n");
-    return -2;
+    return -1;
   }
 
   /* Get the third packet: RSA signature */
@@ -71,7 +71,7 @@ int do_start_session_server(GG_cnx *cnx, GG_packet *pkt) {
     return -1;
   }
   if (ret < 0)
-    return ret;
+    return -1;
 
   /* RSA signature verification (3): now check the signature */
   if (crypto_verify_final(cnx->ggc, &pkt->payload, pkt->payload_size)) {

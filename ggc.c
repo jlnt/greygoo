@@ -57,7 +57,7 @@ static int remote_cmd_execve(GG_cnx *cnx, int argc, char *argv[], int cmd_type);
 static int remote_cmd_sysrq(GG_cnx *cnx, char command);
 static int remote_cmd_dmesg(GG_cnx *cnx);
 void parse_command_line(struct cmdline_parsed *cmd, int argc, char *argv[]);
-static void usage(char *name);
+__attribute__((noreturn)) static void usage(char *name);
 
 int main(int argc, char *argv[]) {
   GG_crypt *ggc;
@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
   return -1;
 }
 
-static void usage(char *name) {
+__attribute__((noreturn)) static void usage(char *name) {
   fprintf(stderr, "Usage:\n"
           "execve command: %s [options] [-- command [arg0 [arg1] ...]]\n\n"
           "Other commands (exclusive):\n"

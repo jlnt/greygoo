@@ -265,7 +265,7 @@ static int cmd_write_file(GG_cnx *cnx, GG_packet *cmd_pkt) {
    */
   REPORT_INFO("Write request to %s\n", (char *) cmd_pkt->payload.ptr );
   ret = do_open_write(cmd_pkt->payload.ptr, &unparsed,
-        cmd_pkt->payload_size - ret);
+                      cmd_pkt->payload_size - ret);
 
   if (cmd_pkt->max_payload_size < sizeof(uint32_t))
     return -1;

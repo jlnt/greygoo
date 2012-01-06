@@ -10,6 +10,8 @@
 #OSSL_NOCRYPT=-n
 
 CFLAGS=-I. -Wall -Wextra -Wno-type-limits -Werror -O2
+#CFLAGS+=-Wno-error -Wshorten-64-to-32 -Wsign-conversion -Wconversion \
+#        -Wno-missing-prototypes -Wno-padded
 
 CC=gcc
 

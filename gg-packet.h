@@ -131,7 +131,7 @@ int gg_can_read(GG_cnx *cnx, int timeout);
 
 #define GG_PKT_HEADER_SIZE 12
 #define GG_PKT_HMAC_LEN 20
-#define GG_PKT_MAX_SIZE 32768
+#define GG_PKT_MAX_SIZE 32768 /* cannot be more than 65535 */
 #define GG_PKT_MIN_SIZE (GG_PKT_HEADER_SIZE + GG_PKT_HMAC_LEN)
 /* we guarantee that GG_PKT_MAX_PAYLOAD_SIZE is less than SSIZE_MAX */
 #define GG_PKT_MAX_PAYLOAD_SIZE (GG_PKT_MAX_SIZE - GG_PKT_HEADER_SIZE \
