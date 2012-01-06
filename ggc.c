@@ -387,7 +387,7 @@ static int remote_cmd_execve(GG_cnx *cnx, int argc, char *argv[], int cmd_type) 
     case CMD_DIRECT_EXEC:
       /* loop until read or write fails */
       do {
-        ret = ggp_read(cnx->socket, &buf, sizeof(buffer) > 0);
+        ret = ggp_read(cnx->socket, &buf, sizeof(buffer));
         if (ret > 0) {
           ret = ggp_full_write(STDOUT_FILENO, &buf, ret);
         }
