@@ -22,7 +22,7 @@
 
 /* Start a session as the server
  *
- * Negociate a Diffie-Hellman session and authenticate the client
+ * Negotiate a Diffie-Hellman session and authenticate the client
  *
  * Returns:
  *  0: success
