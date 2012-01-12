@@ -244,7 +244,8 @@ int crypto_stage2_init(GG_crypt *ggc) {
   ossl_len = BN_bn2bin(pubkey, ggc->pubkey_bin);
 
   /* OpenSSL doesn't provide a good way to check for errors */
-  if (ossl_len <= 0 || (unsigned int) DH_size(ggc->dh) > sizeof(ggc->pubkey_bin) ||
+  if (ossl_len <= 0 ||
+      (unsigned int) DH_size(ggc->dh) > sizeof(ggc->pubkey_bin) ||
       ossl_len > DH_size(ggc->dh)) {
     REPORT_ERROR("crypto_worker_init: BN_bn2bin error");
     return 0;
