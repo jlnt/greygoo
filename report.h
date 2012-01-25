@@ -27,7 +27,7 @@
  */
 int report_init(void);
 
-/* Send a message to syslog (LOG_DAEMON) and to stderr at the same time */
+/* Send a message to syslog (LOG_AUTH) and to stderr at the same time */
 void report(const char *fmt, int type, ...)
     __attribute__ ((format(printf, 1, 3)));
 

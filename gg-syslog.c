@@ -40,7 +40,9 @@
 #include "report.h"
 
 #define MAX_PROC_NAME 16
-static char proc_name[MAX_PROC_NAME+1] = "Grey Goo";
+/* This should not be longer than MAX_PROC_NAME */
+#define DEFAULT_PROC_NAME "greygoo"
+static char proc_name[MAX_PROC_NAME+1] = DEFAULT_PROC_NAME;
 
 /* Get a DGRAM socket to send messages to the syslog daemon
  * Make it non blocking and automatically closed on execve()
@@ -74,7 +76,7 @@ int gg_loginit(void) {
   ret = prctl(PR_GET_NAME, proc_name, 0, 0, 0);
   proc_name[MAX_PROC_NAME] = '\0';
   if (ret) {
-    strncpy(proc_name, "Grey Goo", MAX_PROC_NAME);
+    strncpy(proc_name, DEFAULT_PROC_NAME, MAX_PROC_NAME);
   }
 
   return logfd;

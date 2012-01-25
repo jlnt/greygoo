@@ -59,7 +59,7 @@ void report(const char *fmt, int type, ...) {
   }
 
   if (!syslog_disabled)
-    gg_vsyslog(LOG_DAEMON | LOG_ERR, fmt, log_args);
+    gg_vsyslog(LOG_AUTH | LOG_ERR, fmt, log_args);
 
   if (!stderr_disabled)
     va_end(print_args);
