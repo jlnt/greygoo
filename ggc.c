@@ -535,15 +535,20 @@ static int connect_to_remote(char *remote_host, char *remote_port) {
   int ret;
   struct addrinfo hints;
   struct addrinfo *result;
+  struct sockaddr_in6 client_socket;
+  socklen_t client_socket_sl = sizeof(client_socket);
 
   memset(&hints, 0, sizeof(struct addrinfo));
   hints = (struct addrinfo) {
-  .ai_family = AF_INET6,.ai_socktype = SOCK_STREAM,.ai_flags =
-        AI_NUMERICSERV | AI_CANONNAME | AI_V4MAPPED,.ai_protocol = 0,};
+    .ai_family = AF_INET6,
+    .ai_socktype = SOCK_STREAM,
+    .ai_flags = AI_NUMERICSERV | AI_CANONNAME | AI_V4MAPPED,
+    .ai_protocol = 0,
+  };
 
   ret = getaddrinfo(remote_host, remote_port, &hints, &result);
 
-  if (ret != 0) {
+  if (ret) {
     REPORT_INFO("Invalid IP address or could not resolve hostname: %s\n",
                 remote_host);
     return -1;
@@ -561,11 +566,22 @@ static int connect_to_remote(char *remote_host, char *remote_port) {
 
   ret = connect(tcp_sock, result->ai_addr, result->ai_addrlen);
 
-  if (ret == -1) {
+  if (ret) {
     REPORT_ERRNO("Could not connect");
     freeaddrinfo(result);
     return -1;
   }
+
+  ret = getsockname(tcp_sock, (struct sockaddr *) &client_socket,
+                    &client_socket_sl);
+  if (ret) {
+    REPORT_ERRNO("Could not get local socket information");
+    freeaddrinfo(result);
+    return -1;
+  }
+
+  REPORT_INFO("Connected to %s [%s] from port %d\n", result->ai_canonname,
+              remote_host, (int) ntohs(client_socket.sin6_port));
 
   freeaddrinfo(result);
   return tcp_sock;
