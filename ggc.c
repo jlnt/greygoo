@@ -131,17 +131,25 @@ int main(int argc, char *argv[]) {
 }
 
 __attribute__((noreturn)) static void usage(char *name) {
-  fprintf(stderr, "Usage:\n"
-          "execve command: %s [options] [-- command [arg0 [arg1] ...]]\n\n"
-          "Other commands (exclusive):\n"
-          "  -c <command>    execute shell command "
+  fprintf(stderr, "Usage:\n\n"
+
+          "%s -e [options] [-- /path/to/command [arg0 [arg1] ...]\n"
+          "%s -c [options] [\"shell command\"]\n"
+          "%s <-k|-r> [options]\n"
+          "%s -s <key> [options]\n"
+          "%s <hostname> [\"shell command\"] "
+          "(equivalent to -h <hostname> -c command)\n\n"
+
+          "Command descriptions:\n"
+          "  -e              execute a program via execve()\n"
+          "  -c              execute shell command via \"/bin/sh -c\" "
             "(e.g. 'cat <file> | grep test')\n"
           "  -k              write last %d bytes of the kernel "
             "ring buffer on stderr\n"
           "  -r              reboot\n"
           "  -s <key>        sysrq request <key>\n\n"
 
-          "Execve command options (for plain execve or -c):\n"
+          "Execve command options (for -e or -c):\n"
           "  -x (avoid!)     simple/plain rexec mode. No crypto after "
           "authentication!\n"
           "                  stdin will be disabled\n\n"
@@ -149,20 +157,23 @@ __attribute__((noreturn)) static void usage(char *name) {
           "General options:\n"
           "  -h <hostname>   target hostname/ipv4/ipv6\n"
           "  -p <port>       target port\n"
-          "  -t              use the alternative (test mode) key\n\n",
-          name, GG_PKT_MAX_PAYLOAD_SIZE);
+          "  -t              use the alternative (test mode) key\n\n"
+
+          "If no command is specified, an interactive shell is run.\n\n",
+          name, name, name, name, name, GG_PKT_MAX_PAYLOAD_SIZE);
 
   exit(EXIT_FAILURE);
 }
 
 void parse_command_line(struct cmdline_parsed *cmd, int argc, char *argv[]) {
-  char ch;
-  char *opt_shell_command = NULL; /* argument for /bin/sh -c */
+  int ch;
   static char *default_argv[] = { "/bin/sh", "-i", NULL };
   static char *bin_sh_c_argv[] = { "/bin/sh", "-c", "id", NULL };
+  enum { FLAG_NONE, FLAG_C, FLAG_E, FLAG_K, FLAG_R, FLAG_S } exclusive_flag = 0;
+  int do_direct_exec = 0; /* -x */
 
   *cmd = (struct cmdline_parsed) {
-    .target_ip = "::1",
+    .target_ip = NULL,
     .target_port = GG_PORT_STRING,
     .opt_sysrq_command = NULL,
     .target_argv = NULL,
@@ -171,10 +182,17 @@ void parse_command_line(struct cmdline_parsed *cmd, int argc, char *argv[]) {
     .use_test_key = 0,
   };
 
-  while ((ch = getopt(argc, argv, ":c:h:p:d:rs:ktx")) != -1) {
+  while ((ch = getopt(argc, argv, ":ceh:p:d:rs:ktx")) != -1) {
     switch (ch) {
     case 'c':
-      opt_shell_command = optarg;
+      if (exclusive_flag)
+        usage(argv[0]);
+      exclusive_flag = FLAG_C;
+      break;
+    case 'e':
+      if (exclusive_flag)
+        usage(argv[0]);
+      exclusive_flag = FLAG_E;
       break;
     case 'h':
       cmd->target_ip = optarg;
@@ -186,81 +204,114 @@ void parse_command_line(struct cmdline_parsed *cmd, int argc, char *argv[]) {
       debug_setlevel(atoi(optarg));
       break;
     case 'k':
-      if (cmd->command_to_run != CMD_DEFAULT)
+      if (exclusive_flag)
         usage(argv[0]);
-      else
-        cmd->command_to_run = CMD_DMESG;
+      exclusive_flag = FLAG_K;
       break;
     case 'r':
-      if (cmd->command_to_run != CMD_DEFAULT)
+      if (exclusive_flag)
         usage(argv[0]);
-      else
-        cmd->command_to_run = CMD_REBOOT;
+      exclusive_flag = FLAG_R;
       break;
     case 's':
-     /* check also that the sysrq command is one single character */
-     if (cmd->command_to_run != CMD_DEFAULT || strlen(optarg) != 1) {
+      /* check also that the sysrq command is one single character */
+      if (exclusive_flag || strlen(optarg) != 1) {
         usage(argv[0]);
-     } else {
-        cmd->command_to_run = CMD_SYSRQ;
+      } else {
+        exclusive_flag = FLAG_S;
         cmd->opt_sysrq_command = optarg;
-     }
+      }
       break;
     case 't':
       cmd->use_test_key = 1;
       break;
     case 'x':
-      if (cmd->command_to_run != CMD_DEFAULT)
-        usage(argv[0]);
-      else
-        cmd->command_to_run = CMD_DIRECT_EXEC;
+      do_direct_exec = 1;
       break;
     default:
       usage(argv[0]);
     }
   }
 
+  /* This should no happen */
+  if (optind > argc) {
+    FATAL("getopt");
+  }
+
+  /* if the user did not specify anything, we assume -c */
+  if (!exclusive_flag)
+    exclusive_flag = FLAG_C;
+
+  /* Which command should we run ? */
+  switch(exclusive_flag) {
+    case FLAG_K:
+      cmd->command_to_run = CMD_DMESG;
+      break;
+    case FLAG_R:
+      cmd->command_to_run = CMD_REBOOT;
+      break;
+    case FLAG_S:
+      cmd->command_to_run = CMD_SYSRQ;
+      break;
+    case FLAG_C:
+    case FLAG_E:
+      if (do_direct_exec)
+        cmd->command_to_run = CMD_DIRECT_EXEC;
+      else
+        cmd->command_to_run = CMD_FORK_EXEC;
+      break;
+    default:
+      FATAL("exclusive_flag");
+  }
+
+  /* Make sure we have a target hostname */
+  if (!cmd->target_ip) {
+    /* Hack: try to use the first extra argument as a hostname otherwise */
+    if (optind < argc) {
+      cmd->target_ip = argv[optind];
+      ++optind;
+    } else {
+      fprintf(stderr, "Make sure you specify a hostname!\n\n");
+      usage(argv[0]);
+    }
+  }
+
   /* Make sure command line had correct syntax */
   switch (cmd->command_to_run) {
-
-  case CMD_REBOOT:
-  case CMD_SYSRQ:
-  case CMD_DMESG:
-    if (optind != argc)
-      usage(argv[0]);
-    break;
-  case CMD_FORK_EXEC:
-  case CMD_DIRECT_EXEC:
-  default:
-
-    /* optind > argc is an error, optind < argc means a execve command has been
-     * specified
-     */
-    if (optind > argc || ((optind < argc) && opt_shell_command)) {
-      fprintf(stderr,
-          "You specified both a shell command (-c) and an"
-          " execve command\n\n");
-      usage(argv[0]);
-    }
-
-    if (optind == argc) {
-
-      if (opt_shell_command) {
-        /* a shell command -c has been specified */
-        bin_sh_c_argv[2] = opt_shell_command;
-        cmd->target_argv = bin_sh_c_argv;
-        cmd->target_argc = 3;
-      } else {
-        /* just run a shell */
+    case CMD_REBOOT:
+    case CMD_SYSRQ:
+    case CMD_DMESG:
+      /* for any of those commands, there should be no extra argument on the
+         command line */
+      if (optind != argc)
+        usage(argv[0]);
+      break;
+    case CMD_FORK_EXEC:
+    case CMD_DIRECT_EXEC:
+    case CMD_DEFAULT:
+      if (optind == argc) {
+        /* Nothing on the command line, just run a shell */
         cmd->target_argv = default_argv;
         cmd->target_argc = 2;
+      } else if (exclusive_flag == FLAG_C) {
+        if ((argc - optind) == 1) {
+          bin_sh_c_argv[2] = argv[optind];
+          cmd->target_argv = bin_sh_c_argv;
+          cmd->target_argc = 3;
+          ++optind;
+        } else {
+          fprintf(stderr, "-c only accepts one shell command. "
+                          "Make sure you use quotes!\n\n");
+          usage(argv[0]);
+        }
+      } else if (exclusive_flag == FLAG_E) {
+        /* an execve command has been specified */
+        cmd->target_argc = argc - optind;
+        cmd->target_argv = argv + optind;
+      } else {
+        /* wrong number of arguments */
+        usage(argv[0]);
       }
-
-    } else {
-      /* optind < argc: an execve command (after --) has been specified */
-      cmd->target_argc = argc - optind;
-      cmd->target_argv = argv + optind;
-    }
   }
 }
 
