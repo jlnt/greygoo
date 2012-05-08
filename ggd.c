@@ -642,9 +642,11 @@ static int listen_on_port(in_port_t port) {
 }
 
 static void usage(char *name) {
-  printf("usage: %s [-p port] [-n priority] "
-         "[-t \""ENABLE_TESTKEY_MAGIC"\"] [-i alternative_pid_file] "
-         "[-w num_workers]\n\n",
+  printf("usage: %s [-f|-b] [-p port] [-n priority] "
+         "[-t \""ENABLE_TESTKEY_MAGIC"\"] [-i pid_file] "
+         "[-w num_workers]\n\n"
+         "  -f              force foreground mode\n"
+         "  -b              force background mode\n\n",
          name);
 }
 
