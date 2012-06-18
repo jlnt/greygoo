@@ -535,7 +535,7 @@ static void do_gg_worker(int tcp_sock, int notifier, GG_crypt *ggc,
   DEBUG(2, "New worker spawned: %d\n", getpid());
 
   /* Workers (and especially their descendant) should not have OOM immunity */
-  if (adjust_oom_score("-1")) {
+  if (adjust_oom_score(-1)) {
     DEBUG(2, "Could not adjust OOM score of worker %d\n", getpid());
   }
 

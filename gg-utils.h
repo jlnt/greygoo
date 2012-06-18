@@ -108,11 +108,11 @@ ssize_t encode_uint16(GG_ptr *ggpp, uint16_t num);
 
 /* Adjust the (inheritable) OOM score.
  * The score must be the ascii base 10 representation of an integer between
- * -17 and 16.
+ * -17 and 15.
  *
  * Return -1 on error, 0 on success
  */
-int adjust_oom_score(const char *oom_score);
+int adjust_oom_score(const int oom_adj);
 
 /* This function does 3 things:
  * 1. Commit all the pages in the virtual address space to memory
@@ -140,6 +140,7 @@ int old_libc_compatible_ppoll(struct pollfd *fds, nfds_t nfds,
                     const struct timespec *timeout, const sigset_t *sigmask);
 #ifdef GG_TESTS
 void ggp_seek(GG_ptr *ggp, size_t offset);
+int oom_adj_to_oom_score_adj(int oom_adj);
 #endif
 
 #endif                          /* GG_UTILS_H */

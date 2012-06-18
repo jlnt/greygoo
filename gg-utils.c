@@ -307,15 +307,17 @@ ssize_t encode_uint16(GG_ptr *ggpp, uint16_t num) {
   return sizeof(uint16_t);
 }
 
-int adjust_oom_score(const char *oom_score) {
+/* returns 0 on success */
+static int write_to_oom_adj_file(const char *oom_adj_file,
+                                 const char *oom_score) {
   FILE *oom_adj = NULL;
   size_t n;
   int ret = -1;
 
-  if (!oom_score)
+  if (!oom_adj_file || !oom_score)
     goto out;
 
-  oom_adj = fopen("/proc/self/oom_adj", "a+");
+  oom_adj = fopen(oom_adj_file, "a+");
   if (!oom_adj)
     goto out;
 
@@ -331,7 +333,55 @@ out:
   return ret;
 }
 
+/* Convert old style /proc/pid/oom_adj to new style /proc/pid/oom_score_adj
+ * values.
+ */
+int oom_adj_to_oom_score_adj(int oom_adj) {
+  const int kOOM_ADJUST_MAX = 15;     /* include/linux/oom.h */
+  const int kOOM_SCORE_ADJ_MAX = 1000;
+  const int kOOM_DISABLE = -17;
+  int oom_score_adj;
+
+  if (oom_adj < kOOM_DISABLE || oom_adj > kOOM_ADJUST_MAX)
+    FATAL("invalid OOM score");
+
+  /* We convert between the two by using the linear formula that newer kernels
+   * use for backward compatibility (fs/proc/base.c).
+   */
+  if (oom_adj == kOOM_ADJUST_MAX) {
+    oom_score_adj = kOOM_SCORE_ADJ_MAX;
+  } else {
+    oom_score_adj = (oom_adj * kOOM_SCORE_ADJ_MAX) / -kOOM_DISABLE;
+  }
+  return oom_score_adj;
+}
+
+/* The kernel can use new style (oom_score_adj) or old style (oom_adj). We try
+ * both.
+ */
+int adjust_oom_score(int oom_adj) {
+  char score_string[16];
+  int oom_score_adj;  /* new style score */
+  int ret;
+  oom_score_adj = oom_adj_to_oom_score_adj(oom_adj);
+  /* First we try new-style OOM adjustment */
+  ret = snprintf(score_string, sizeof(score_string), "%d", oom_score_adj);
+  if (ret < 0 || (unsigned) ret >= sizeof(score_string))
+    FATAL("snprintf");
+  if (write_to_oom_adj_file("/proc/self/oom_score_adj", score_string) == 0)
+    return 0;
+  /* Then we try old-style OOM adjustment */
+  ret = snprintf(score_string, sizeof(score_string), "%d", oom_adj);
+  if (ret < 0 || (unsigned) ret >= sizeof(score_string))
+    FATAL("snprintf");
+  if (write_to_oom_adj_file("/proc/self/oom_adj", score_string) == 0)
+    return 0;
+  else
+    return -1;
+}
+
 int become_bullet_proof(int prio) {
+  const int kOOM_DISABLE = -17;
   int ret = 0;
 
   /* commit all the pages we might need to memory. We don't use MCL_FUTURE
@@ -345,8 +395,8 @@ int become_bullet_proof(int prio) {
     ret = -1;
   }
 
-  /* -17 gives complete immunity. Inherited on fork(). */
-  if (adjust_oom_score("-17")) {
+  /* Give complete immunity. Inherited on fork(). */
+  if (adjust_oom_score(kOOM_DISABLE)) {
     DEBUG(1, "Could not get OOM immunity\n");
     ret = -1;
   }

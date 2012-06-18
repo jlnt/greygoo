@@ -161,10 +161,33 @@ static int code_string_tests(void) {
   return (memcmp(buf1, buf2, sizeof(buf2)));
 }
 
+/* This should FATAL because the value is out of range */
+static void oom_score_adj_conversion_1(void) {
+  (void) oom_adj_to_oom_score_adj(16);
+}
+
+/* This should FATAL because the value is out of range */
+static void oom_score_adj_conversion_2(void) {
+  (void) oom_adj_to_oom_score_adj(-18);
+}
+
+static int oom_score_adj_conversion_value_tests(void) {
+  /* test maximum and minimum range values */
+  return oom_adj_to_oom_score_adj(15) != 1000 ||
+         oom_adj_to_oom_score_adj(-17) != -1000;
+}
+
+static int oom_score_adj_conversion_tests(void) {
+  return expect_fatal(oom_score_adj_conversion_1) ||
+         expect_fatal(oom_score_adj_conversion_2) ||
+         oom_score_adj_conversion_value_tests();
+}
+
 DEFINE_TEST(utils_testall) {
   return expect_fatal(ggp_init_nullptr) ||
          ggp_equal_tests() ||
          ggp_check_tests() ||
          encode_uint32_tests() ||
-         code_string_tests();
+         code_string_tests() ||
+         oom_score_adj_conversion_tests();
 }
