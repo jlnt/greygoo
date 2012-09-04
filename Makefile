@@ -52,7 +52,6 @@ endif
 
 ifdef FORCE32BITS
 CFLAGS+=-m32
-GG_LDFLAGS+=--oformat=elf32-i386
 endif
 
 all: ggd ggc tests
@@ -163,20 +162,30 @@ genrsatest: tools/gg-keygen
 
 # Generate .o files for OpenSSL crypto
 
-$(RSAPRIV_O): $(RSAPRIV_PEM)
-	$(LD) $(GG_LDFLAGS) -r -b binary $< -o $@
+# We look at gg-utils.o, which is always compiled, to figure out the right
+# binary format for embedded keys below and store it in an option file for ld.
 
-$(RSAPUB_O): $(RSAPUB_PEM)
-	$(LD) $(GG_LDFLAGS) -r -b binary $< -o $@
+oformat.txt: gg-utils.o
+	@echo "Determining binary format for embedded key objects."
+	objdump -f $< | grep "format" | \
+	    sed -e "s/.*format[ ]*/--oformat=/" > $@
+	@echo -n "Key objects will be linked with ld option "
+	@cat $@
 
-$(RSAPRIV_TEST_O): $(RSAPRIV_TEST_PEM)
-	$(LD) $(GG_LDFLAGS) -r -b binary $< -o $@
+$(RSAPRIV_O): $(RSAPRIV_PEM) oformat.txt
+	$(LD) @oformat.txt -r -b binary $< -o $@
 
-$(RSAPUB_TEST_O): $(RSAPUB_TEST_PEM)
-	$(LD) $(GG_LDFLAGS) -r -b binary $< -o $@
+$(RSAPUB_O): $(RSAPUB_PEM) oformat.txt
+	$(LD) @oformat.txt -r -b binary $< -o $@
 
-$(DHPARAMS_O): $(DHPARAMS_DER)
-	$(LD) $(GG_LDFLAGS) -r -b binary $< -o $@
+$(RSAPRIV_TEST_O): $(RSAPRIV_TEST_PEM) oformat.txt
+	$(LD) @oformat.txt -r -b binary $< -o $@
+
+$(RSAPUB_TEST_O): $(RSAPUB_TEST_PEM) oformat.txt
+	$(LD) @oformat.txt -r -b binary $< -o $@
+
+$(DHPARAMS_O): $(DHPARAMS_DER) oformat.txt
+	$(LD) @oformat.txt -r -b binary $< -o $@
 
 # Generate precomputed files for cryptolib (public keys only)
 
@@ -207,7 +216,7 @@ clean:
 	      $(RSAPUB_PRECOMP_TEST_C) $(RSAPUB_PRECOMP_O) \
 	      $(RSAPUB_PRECOMP_TEST_O) $(DHPARAMS_PRECOMP_C) \
 	      $(DHPARAMS_PRECOMP_O) tools/cl-precompute \
-	      tools/gg-keygen tools/gg-tests
+	      tools/gg-keygen tools/gg-tests oformat.txt
 
 rmrsa: clean
 	rm -f $(RSAPRIV_PEM) $(RSAPUB_PEM)
